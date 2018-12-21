@@ -1,0 +1,354 @@
+@echo off
+D:
+cd %WORKSPACE%
+
+if "%Build_From%"=="branch" (
+IF DEFINED Microservices_Branch_Name (
+set build_no=%Microservices_Branch_Name%.%CUST_BUILD_ID%
+ECHO Microservices_Branch_Name IS defined
+git clone http://admin@203.99.215.250:8080/gitblit/r/pki/nextgen/microservices.git
+cd %WORKSPACE%\microservices
+git checkout %Microservices_Branch_Name%
+git tag -a %Microservices_Branch_Name%.%CUST_BUILD_ID% -m "Jenkins Build - %build_no% JobName: %JOB_NAME%"
+git push origin --tags
+git checkout tags/%Microservices_Branch_Name%.%CUST_BUILD_ID%
+if exist "%shared_path%\%branch_type%\NexGenConfigurationRepo" rd /s /q "%shared_path%\%branch_type%\NexGenConfigurationRepo"
+mkdir "%shared_path%\%branch_type%\NexGenConfigurationRepo"
+xcopy "%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo" "%shared_path%\%branch_type%\NexGenConfigurationRepo" /Y /E
+echo ###########################################
+echo BUILD VERSION: %Microservices_Branch_Name%.%CUST_BUILD_ID%
+echo ###########################################
+) ELSE  (
+echo ###########################################
+ECHO Microservices_Branch_Name is NOT PROVIDED
+echo ###########################################
+)
+)
+
+setlocal enabledelayedexpansion
+if "%Build_From%"=="tag" (
+IF DEFINED Microservices_Tag_Name (
+set build_no=%Microservices_Tag_Name%
+ECHO Microservices_Tag_Name IS defined
+git clone http://admin@203.99.215.250:8080/gitblit/r/pki/nextgen/microservices.git
+cd %WORKSPACE%\microservices
+git checkout tags/%Microservices_Tag_Name%
+if exist "%shared_path%\%branch_type%\NexGenConfigurationRepo" rd /s /q "%shared_path%\%branch_type%\NexGenConfigurationRepo"
+mkdir "%shared_path%\%branch_type%\NexGenConfigurationRepo"
+xcopy "%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo" "%shared_path%\%branch_type%\NexGenConfigurationRepo" /Y /E
+) ELSE  (
+echo ###########################################
+ECHO Microservices_Tag_Name is NOT PROVIDED
+echo ###########################################
+)
+)
+
+@echo off
+set config_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties
+D:
+cd %WORKSPACE%\microservices\MicroService\common\NextGenCryptoToken
+call mvn clean install
+D:
+cd %WORKSPACE%\microservices\MicroService\common\NextGenEmailManagement
+call mvn clean install
+D:
+cd %WORKSPACE%\microservices\MicroService\common\NextGenExceptionHandling
+call mvn clean install
+
+if %Login% == true (
+echo ##################################
+echo BUILDING LOGIN
+echo ##################################
+D:
+cd %WORKSPACE%\microservices\MicroService\Login
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_Login -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+IF EXIST %WORKSPACE%\microservices\MicroService\Login\target\Login*.jar (
+    del %shared_path%\%branch_type%\Login*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\Login\target\Login*.jar %shared_path%\%branch_type%
+  )
+) ELSE  (
+echo ##################################
+echo NOT BUILDING LOGIN
+echo ##################################
+)
+
+if %Demographic% == true (
+echo ##################################
+echo BUILDING DEMOGRAPHIC
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\MicroService\DemographicsManagement
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_DEMOGRAPHIC -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+IF EXIST %WORKSPACE%\microservices\MicroService\DemographicsManagement\target\DemographicsManagement*.jar (
+    del %shared_path%\%branch_type%\DemographicsManagement*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\DemographicsManagement\target\DemographicsManagement*.jar %shared_path%\%branch_type%
+  )
+) ELSE (
+echo ##################################
+echo NOT BUILDING DEMOGRAPHIC
+echo ##################################
+)
+
+if %Specimen% == true (
+echo ##################################
+echo BUILDING SPECIMEN
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\MicroService\SpecimenManagement
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_SPECIMEN -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+IF EXIST %WORKSPACE%\microservices\MicroService\SpecimenManagement\target\SpecimenManagement*.jar (
+    del %shared_path%\%branch_type%\SpecimenManagement*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\SpecimenManagement\target\SpecimenManagement*.jar %shared_path%\%branch_type%
+  )
+) ELSE (
+echo ##################################
+echo NOT BUILDING SPECIMEN
+echo ##################################
+)
+
+
+if %PKI_Gateway% == true (
+echo ##################################
+echo BUILDING PKI_GATEWAY
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\MicroService\PerkinGateway
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_PKI_GATEWAY -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+IF EXIST %WORKSPACE%\microservices\MicroService\PerkinGateway\target\PKI_Gateway*.jar (
+    del %shared_path%\%branch_type%\PKI_Gateway*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\PerkinGateway\target\PKI_Gateway*.jar %shared_path%\%branch_type%
+  )
+) ELSE (
+echo ##################################
+echo NOT BUILDING PKI_GATEWAY
+echo ##################################
+)
+
+if %ConfigurationManagement% == true (
+echo ##################################
+echo BUILDING CONFIGURATION MANAGEMENT
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\MicroService\ConfigurationManagement
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_ConfigurationManagement -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+
+IF EXIST %WORKSPACE%\microservices\MicroService\ConfigurationManagement\target\ConfigurationManagement*.jar (
+    del %shared_path%\%branch_type%\ConfigurationManagement*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\ConfigurationManagement\target\ConfigurationManagement*.jar %shared_path%\%branch_type%
+  )
+) ELSE  (
+echo ##################################
+echo NOT BUILDING CONFIGURATION MANAGEMENT
+echo ##################################
+)
+
+
+if %UserManagement% == true (
+echo ##################################
+echo BUILDING USER MANAGEMENT
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\MicroService\UserManagement
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_UserManagement -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+
+IF EXIST %WORKSPACE%\microservices\MicroService\UserManagement\target\UserManagement*.jar (
+    del %shared_path%\%branch_type%\UserManagement*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\UserManagement\target\UserManagement*.jar %shared_path%\%branch_type%
+  )
+) ELSE (
+echo ##################################
+echo NOT BUILDING USER MANAGEMENT
+echo ##################################
+)
+
+
+if %IILLabAssayManagement% == true (
+echo ##################################
+echo BUILDING IIL LAB ASSAY MANAGEMENT
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\MicroService\IILLabAssayManagement
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_IILLabAssayManagement -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+
+IF EXIST %WORKSPACE%\microservices\MicroService\IILLabAssayManagement\target\IILLabAssayManagement*.jar (
+    del %shared_path%\%branch_type%\IILLabAssayManagement*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\IILLabAssayManagement\target\IILLabAssayManagement*.jar %shared_path%\%branch_type%
+  )
+) ELSE (
+echo ##################################
+echo NOT BUILDING IIL LAB ASSAY MANAGEMENT
+echo ##################################
+)
+
+if %IILListenerManagement% == true (
+echo ##################################
+echo BUILDING IIL LISTENER MANAGEMENT
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\MicroService\IILListenerManagement
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_IILListenerManagement -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+echo %ERRORLEVEL%
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+echo %ERRORLEVEL%
+)
+
+IF EXIST %WORKSPACE%\microservices\MicroService\IILListenerManagement\target\IILListenerManagement*.jar (
+    del %shared_path%\%branch_type%\IILListenerManagement*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\IILListenerManagement\target\IILListenerManagement*.jar %shared_path%\%branch_type%
+  )
+) ELSE (
+echo ##################################
+echo NOT BUILDING IIL LISTENER MANAGEMENT
+echo ##################################
+)
+
+if %Activiti_Util% == true (
+echo ##################################
+echo BUILDING ACTIVITI UTIL
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\SupportLib\Workflow-BPMEngine-Activiti\pki-activiti-util
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_Activiti_Util -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+
+IF EXIST %WORKSPACE%\microservices\SupportLib\Workflow-BPMEngine-Activiti\pki-activiti-util\target\pki-activiti-util-*-jar-with-dependencies.jar (
+    del %shared_path%\%branch_type%\pki-activiti-util-*-jar-with-dependencies.jar /Q /S
+    copy %WORKSPACE%\microservices\SupportLib\Workflow-BPMEngine-Activiti\pki-activiti-util\target\pki-activiti-util-*-jar-with-dependencies.jar %shared_path%\%branch_type%
+  )
+) ELSE (
+echo ##################################
+echo NOT BUILDING ACTIVITI UTIL
+echo ##################################
+)
+
+if %ContactManagement% == true (
+echo ##################################
+echo BUILDING CONTACT MANAGEMENT
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\MicroService\ContactManagement
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_ContactManagement -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+IF EXIST %WORKSPACE%\microservices\MicroService\ContactManagement\target\ContactManagement*.jar (
+    del %shared_path%\%branch_type%\ContactManagement*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\ContactManagement\target\ContactManagement*.jar %shared_path%\%branch_type%
+  )
+) ELSE (
+echo ##################################
+echo NOT BUILDING CONTACT MANAGEMENT
+echo ##################################
+)
+
+if %LabAssayManagement% == true (
+echo ##################################
+echo BUILDING LAB ASSAY MANAGEMENT
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\MicroService\LabAssayManagement
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_LabAssayManagement -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+IF EXIST %WORKSPACE%\microservices\MicroService\LabAssayManagement\target\LabAssayManagement*.jar (
+    del %shared_path%\%branch_type%\LabAssayManagement*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\LabAssayManagement\target\LabAssayManagement*.jar %shared_path%\%branch_type%
+  )
+) ELSE (
+echo ##################################
+echo NOT BUILDING LAB ASSAY MANAGEMENT
+echo ##################################
+)
+
+
+if %TestOrderManagement% == true (
+echo ##################################
+echo BUILDING TEST ORDER MANAGEMENT
+echo ##################################
+
+D:
+cd %WORKSPACE%\microservices\MicroService\TestOrderManagement
+
+if %SONAR% == true (
+call mvn clean install -Dversion=%build_no% test -Dmaven.test.failure.ignore=true jacoco:report sonar:sonar -Dsonar.host.url=http://13.250.70.115:9000 -Dsonar.login=admin -Dsonar.password=%sonar.password% -Dsonar.projectName=%branch_type%_TestOrderManagement -Dconfig_path=%WORKSPACE%\microservices\MicroService\common\NexGenConfigurationRepo\%prop_file%.properties || exit /b
+) ELSE (
+call mvn clean install -DskipTests=true -Dversion=%build_no% || exit /b
+)
+
+
+IF EXIST %WORKSPACE%\microservices\MicroService\TestOrderManagement\target\testordermanagement*.jar (
+    del %shared_path%\%branch_type%\testordermanagement*.jar /Q /S
+    copy %WORKSPACE%\microservices\MicroService\TestOrderManagement\target\testordermanagement*.jar %shared_path%\%branch_type%
+  )
+) ELSE  (
+echo ##################################
+echo NOT BUILDING TEST ORDER MANAGEMENT
+echo ##################################
+)
